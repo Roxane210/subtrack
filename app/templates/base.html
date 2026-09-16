@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}SubTrack - Gestionnaire d'Abonnements{% endblock %}</title>
+
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SubTrack">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/icons/favicon.svg">
+
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js & Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body x-data="subtrackApp" class="h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased flex flex-col min-h-screen transition-colors duration-200">
+
+  <!-- Navigation / Header -->
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3 cursor-pointer" @click="resetFilters()">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="credit-card" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-indigo-400">SubTrack</span>
+          <span class="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-brand-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50">v1.3</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons Header -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Notification Button -->
+        <button @click="requestNotificationPermission()" 
+                title="Activer les notifications" 
+                class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative">
+          <i data-lucide="bell" class="w-5 h-5"></i>
+          <template x-if="dashboard.upcoming_7_days_count > 0">
+            <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>
+          </template>
+        </button>
+
+        <!-- Import / Export Button -->
+        <button @click="isImportExportOpen = true" 
+                title="Import / Export" 
+                class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <i data-lucide="arrow-down-up" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Dark Mode Toggle -->
+        <button @click="toggleTheme()" 
+                title="Changer le thème" 
+                class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+          <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
+        </button>
+
+        <!-- New Subscription Primary Button -->
+        <button @click="openCreateModal()" 
+                class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md shadow-brand-600/30 transition-all active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Ajouter</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Notification Toast -->
+  <div x-cloak x-show="toast.show" 
+       x-transition:enter="transition ease-out duration-300 transform"
+       x-transition:enter-start="opacity-0 translate-y-4"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-200 transform"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 translate-y-4"
+       class="fixed bottom-6 right-6 z-50 flex items-center p-4 rounded-xl shadow-xl text-sm font-medium border"
+       :class="toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-900' : 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-900'">
+    <i :data-lucide="toast.type === 'error' ? 'alert-triangle' : 'check-circle-2'" class="w-5 h-5 mr-2.5"></i>
+    <span x-text="toast.message"></span>
+  </div>
+
+  <script>
+    // Initialise les icônes Lucide à chaque mise à jour du DOM
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+    window.addEventListener('alpine:initialized', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

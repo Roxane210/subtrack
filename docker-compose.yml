@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  subtrack:
+    build: .
+    container_name: subtrack
+    restart: unless-stopped
+    ports:
+      - "8090:8000"
+    environment:
+      - DATA_DIR=/data
+      - TZ=Europe/Paris
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
