@@ -83,7 +83,7 @@ L'application est immédiatement accessible sur `http://localhost:8090` (ou l'IP
 ## 📱 Installation en tant que PWA sur Android & PC
 
 1. **Sur Android (Chrome / Brave / Edge)** :
-   - Ouvrez `http://<IP_DU_NAS>:8000` (ou via votre nom de domaine / reverse proxy HTTPS).
+   - Ouvrez `http://<IP_DU_NAS>:8090` (ou via votre nom de domaine / reverse proxy HTTPS).
    - Appuyez sur le menu (3 points en haut à droite) et sélectionnez **« Ajouter à l'écran d'accueil »** ou **« Installer l'application »**.
 2. **Sur PC (Chrome / Edge)** :
    - Une icône d'installation apparaît dans la barre d'adresse du navigateur.
