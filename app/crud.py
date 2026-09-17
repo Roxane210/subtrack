@@ -53,7 +53,8 @@ def get_subscriptions(
     db: Session,
     category: Optional[str] = None,
     status: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    payment_method: Optional[str] = None
 ) -> List[SubscriptionOut]:
     """Récupère et filtre les abonnements."""
     query = db.query(Subscription)
@@ -63,6 +64,8 @@ def get_subscriptions(
         query = query.filter(Subscription.status == status)
     if search:
         query = query.filter(Subscription.name.ilike(f"%{search}%"))
+    if payment_method and payment_method != "all":
+        query = query.filter(Subscription.payment_method == payment_method)
 
     items = query.order_by(Subscription.next_billing_date.asc()).all()
     return [enrich_subscription(s) for s in items]

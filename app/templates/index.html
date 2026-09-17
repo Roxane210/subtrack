@@ -292,6 +292,18 @@
 
         <!-- Filtres Catégorie et Statut -->
         <div class="flex items-center space-x-2">
+          <!-- Filtre par moyen de paiement (source: Paramètres ∪ valeurs utilisées) -->
+          <select x-model="filterPaymentMethod" @change="applyFilters()" class="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-700 dark:text-slate-200">
+            <option value="all">Tous Paiements</option>
+            <template x-for="pm in paymentMethods" :key="pm">
+              <option :value="pm" x-text="pm"></option>
+            </template>
+            <!-- Valeurs réellement utilisées mais absentes de la liste Paramètres -->
+            <template x-for="used in [...new Set(subscriptions.map(s => s.payment_method).filter(v => v && !paymentMethods.some(pm => pm.toLowerCase() === v.toLowerCase())))]" :key="'used-' + used">
+              <option :value="used" x-text="used"></option>
+            </template>
+          </select>
+
           <select x-model="filterCategory" @change="applyFilters()" class="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-700 dark:text-slate-200">
             <option value="all">Toutes Catégories</option>
             <option value="Streaming">Streaming</option>
@@ -525,7 +537,27 @@
 
           <div>
             <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">Moyen de Paiement</label>
-            <input type="text" x-model="formData.payment_method" placeholder="Carte Bancaire, PayPal..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <!-- Mode liste: dropdown alimenté par les Paramètres, avec option libre ➕ -->
+            <template x-if="paymentSelectMode === 'list'">
+              <select x-model="formData.payment_method" @change="onPaymentSelectChange()"
+                      class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <template x-for="pm in paymentMethods" :key="pm">
+                  <option :value="pm" x-text="pm" :selected="pm === formData.payment_method"></option>
+                </template>
+                <option value="__custom__">➕ Autre (saisir)…</option>
+              </select>
+            </template>
+            <!-- Mode libre: saisie d'un moyen hors liste, avec retour à la liste -->
+            <template x-if="paymentSelectMode === 'custom'">
+              <div class="flex items-center space-x-2">
+                <input type="text" x-model="formData.payment_method" placeholder="Carte Bancaire, PayPal..."
+                       class="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <button type="button" @click="onPaymentSelectModeReset()" title="Revenir à la liste"
+                        class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+                  <i data-lucide="list" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -550,6 +582,66 @@
           </button>
         </div>
       </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODALE PARAMÈTRES (MOYENS DE PAIEMENT) -->
+  <!-- ========================================== -->
+  <div x-cloak x-show="isSettingsOpen"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div @click.away="isSettingsOpen = false"
+         class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+          <i data-lucide="settings" class="w-4 h-4 text-brand-600"></i>
+          <span>Paramètres</span>
+        </h3>
+        <button @click="isSettingsOpen = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4 text-xs sm:text-sm">
+        <div>
+          <h4 class="font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center space-x-2">
+            <i data-lucide="credit-card" class="w-4 h-4 text-brand-600"></i>
+            <span>Moyens de paiement</span>
+          </h4>
+          <p class="text-slate-500 dark:text-slate-400 mb-3">Liste proposée dans les formulaires et utilisable comme filtre. Les abonnements existants ne sont jamais modifiés.</p>
+
+          <!-- Liste éditable -->
+          <ul class="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-3">
+            <template x-for="pm in paymentMethods" :key="pm">
+              <li class="flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-900">
+                <span class="text-slate-700 dark:text-slate-200 font-medium" x-text="pm"></span>
+                <button @click="removePaymentMethod(pm)"
+                        class="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        title="Supprimer de la liste">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </li>
+            </template>
+            <template x-if="paymentMethods.length === 0">
+              <li class="px-3 py-3 text-center text-slate-400">Aucun moyen de paiement défini</li>
+            </template>
+          </ul>
+
+          <!-- Ajout -->
+          <div class="flex items-center space-x-2">
+            <input type="text" x-model="newPaymentMethod" @keydown.enter.prevent="addPaymentMethodFromSettings()"
+                   placeholder="Nouveau moyen de paiement..."
+                   class="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand-500 focus:outline-none text-slate-900 dark:text-white">
+            <button @click="addPaymentMethodFromSettings()"
+                    class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold shadow-md shadow-brand-600/30 transition-all active:scale-95">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Ajouter</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>

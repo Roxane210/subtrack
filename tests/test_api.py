@@ -98,3 +98,67 @@ def test_delete_subscription(client):
     sub_id = r.json()["id"]
     assert client.delete(f"/api/subscriptions/{sub_id}").status_code == 200
     assert client.get(f"/api/subscriptions/{sub_id}").status_code == 404
+
+
+# ==========================================
+# SETTINGS - MOYENS DE PAIEMENT
+# ==========================================
+
+def test_payment_methods_auto_init(client):
+    """Premier appel: liste initialisée (défauts + valeurs utilisées) et non vide."""
+    r = client.get("/api/settings/payment-methods")
+    assert r.status_code == 200
+    methods = r.json()["payment_methods"]
+    assert isinstance(methods, list) and len(methods) > 0
+    # 'Carte Bancaire' est un défaut et la valeur par défaut des abonnements
+    assert "Carte Bancaire" in methods
+
+
+def test_payment_methods_add_and_duplicate(client):
+    r1 = client.post("/api/settings/payment-methods", json={"name": "Revolut"})
+    assert r1.status_code == 200
+    assert "Revolut" in r1.json()["payment_methods"]
+
+    # Doublon (casse différente) : ignoré, pas de duplication
+    r2 = client.post("/api/settings/payment-methods", json={"name": "revolut"})
+    methods = r2.json()["payment_methods"]
+    assert methods.count("Revolut") == 1
+    assert "revolut" not in methods
+
+    # Nom vide : rejeté
+    r3 = client.post("/api/settings/payment-methods", json={"name": "   "})
+    assert r3.status_code == 400
+
+
+def test_payment_methods_delete(client):
+    client.post("/api/settings/payment-methods", json={"name": "À supprimer PM"})
+    r = client.delete("/api/settings/payment-methods/À%20supprimer%20PM")
+    assert r.status_code == 200
+    assert "À supprimer PM" not in r.json()["payment_methods"]
+
+    # Suppression d'un élément absent : 404
+    r2 = client.delete("/api/settings/payment-methods/Inexistant")
+    assert r2.status_code == 404
+
+
+def test_payment_methods_delete_keeps_subscriptions(client):
+    """Supprimer un moyen de paiement de la liste ne modifie pas les abonnements."""
+    r = client.post("/api/subscriptions", json=SUB | {"name": "Avec PM", "payment_method": "PM Éphémère"})
+    sub_id = r.json()["id"]
+    client.post("/api/settings/payment-methods", json={"name": "PM Éphémère"})
+    client.delete("/api/settings/payment-methods/PM%20Éphémère")
+    sub = client.get(f"/api/subscriptions/{sub_id}").json()
+    assert sub["payment_method"] == "PM Éphémère"
+
+
+def test_filter_by_payment_method(client):
+    """Le filtre payment_method de /api/subscriptions fonctionne."""
+    client.post("/api/subscriptions", json=SUB | {"name": "Filtre PM", "payment_method": "PayPal"})
+    r = client.get("/api/subscriptions", params={"payment_method": "PayPal"})
+    assert r.status_code == 200
+    items = r.json()
+    assert len(items) >= 1
+    assert all(s["payment_method"] == "PayPal" for s in items)
+    # Filtre 'all' : pas de restriction
+    r_all = client.get("/api/subscriptions", params={"payment_method": "all"})
+    assert any(s["name"] != "Filtre PM" for s in r_all.json())

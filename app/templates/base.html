@@ -57,7 +57,7 @@
         </div>
         <div>
           <span class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-indigo-400">SubTrack</span>
-          <span class="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-brand-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50">v1.3</span>
+          <span class="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-brand-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50">v1.31</span>
         </div>
       </div>
 
@@ -80,6 +80,13 @@
           <i data-lucide="arrow-down-up" class="w-4 h-4"></i>
           <span class="hidden sm:inline">Import / Export</span>
           <span class="sm:hidden"> ⇅ </span>
+        </button>
+
+        <!-- Settings Button -->
+        <button @click="openSettings()"
+                title="Paramètres (moyens de paiement)"
+                class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+          <i data-lucide="settings" class="w-4 h-4"></i>
         </button>
 
         <!-- Dark Mode Toggle -->
