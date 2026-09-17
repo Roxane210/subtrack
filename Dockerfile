@@ -27,4 +27,4 @@ EXPOSE 8080
 VOLUME ["/data"]
 
 # Démarrage avec prise en compte dynamique de la variable $PORT de l'environnement Cloud Run / Docker
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
