@@ -2,6 +2,13 @@ from datetime import date
 from sqlalchemy import Column, Integer, String, Float, Date, Text
 from .database import Base
 
+class Setting(Base):
+    """Stockage clé/valeur des paramètres applicatifs (ex: liste des moyens de paiement)."""
+    __tablename__ = "settings"
+
+    key = Column(String(80), primary_key=True)
+    value = Column(Text, nullable=False, default="[]")  # JSON sérialisé
+
 class Subscription(Base):
     """Modèle représentant un abonnement ou service récurrent."""
     __tablename__ = "subscriptions"

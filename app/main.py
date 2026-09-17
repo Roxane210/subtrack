@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .database import engine, Base, get_db
-from .models import Subscription
+from .models import Subscription, Setting
 from .schemas import (
     SubscriptionCreate,
     SubscriptionUpdate,
@@ -69,10 +69,11 @@ def list_subscriptions(
     category: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Liste tous les abonnements avec filtres optionnels."""
-    return crud.get_subscriptions(db, category=category, status=status, search=search)
+    return crud.get_subscriptions(db, category=category, status=status, search=search, payment_method=payment_method)
 
 @app.post("/api/subscriptions", response_model=SubscriptionOut, status_code=201)
 def create_subscription(sub_in: SubscriptionCreate, db: Session = Depends(get_db)):
@@ -111,6 +112,68 @@ def delete_subscription(sub_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Abonnement introuvable")
     return {"message": "Abonnement supprimé avec succès"}
 
+
+# ==========================================
+# ROUTES SETTINGS (Paramètres applicatifs)
+# ==========================================
+
+DEFAULT_PAYMENT_METHODS = ["Carte Bancaire", "Carte AMEX", "Prélèvement SEPA", "PayPal", "Espèces"]
+PAYMENT_METHODS_KEY = "payment_methods"
+
+def _get_setting_value(db: Session, key: str) -> Optional[list]:
+    """Lit la valeur JSON d'un paramètre, ou None si absent."""
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    if not setting:
+        return None
+    try:
+        return json.loads(setting.value)
+    except (ValueError, TypeError):
+        return None
+
+def _set_setting_value(db: Session, key: str, value: list) -> None:
+    """Écrit (crée ou met à jour) un paramètre sérialisé en JSON."""
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    payload = json.dumps(value, ensure_ascii=False)
+    if setting:
+        setting.value = payload
+    else:
+        db.add(Setting(key=key, value=payload))
+    db.commit()
+
+@app.get("/api/settings/payment-methods")
+def get_payment_methods(db: Session = Depends(get_db)):
+    """Retourne la liste des moyens de paiement. Auto-initialisation au premier appel:
+    valeurs par défaut + valeurs distinctes déjà utilisées dans les abonnements."""
+    methods = _get_setting_value(db, PAYMENT_METHODS_KEY)
+    if methods is None:
+        used = {row[0].strip() for row in db.query(Subscription.payment_method).distinct() if row[0] and row[0].strip()}
+        methods = list(dict.fromkeys(DEFAULT_PAYMENT_METHODS + sorted(used)))
+        _set_setting_value(db, PAYMENT_METHODS_KEY, methods)
+    return {"payment_methods": methods}
+
+@app.post("/api/settings/payment-methods")
+def add_payment_method(payload: dict, db: Session = Depends(get_db)):
+    """Ajoute un moyen de paiement (doublons ignorés, comparaison insensible à la casse)."""
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom du moyen de paiement requis")
+    methods = _get_setting_value(db, PAYMENT_METHODS_KEY)
+    if methods is None:
+        methods = list(DEFAULT_PAYMENT_METHODS)
+    if not any(m.lower() == name.lower() for m in methods):
+        methods.append(name)
+        _set_setting_value(db, PAYMENT_METHODS_KEY, methods)
+    return {"payment_methods": methods}
+
+@app.delete("/api/settings/payment-methods/{name}")
+def delete_payment_method(name: str, db: Session = Depends(get_db)):
+    """Supprime un moyen de paiement de la liste (les abonnements qui l'utilisent ne sont pas modifiés)."""
+    methods = _get_setting_value(db, PAYMENT_METHODS_KEY) or list(DEFAULT_PAYMENT_METHODS)
+    remaining = [m for m in methods if m.lower() != name.lower()]
+    if len(remaining) == len(methods):
+        raise HTTPException(status_code=404, detail="Moyen de paiement introuvable dans la liste")
+    _set_setting_value(db, PAYMENT_METHODS_KEY, remaining)
+    return {"payment_methods": remaining}
 
 # ==========================================
 # ROUTES EXPORT / IMPORT (JSON & CSV)

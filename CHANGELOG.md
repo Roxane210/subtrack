@@ -9,8 +9,15 @@ et ce projet suit le [Versionnage Sémantique](https://semver.org/lang/fr/).
 
 ## [Non versionné] — 2026-09-17
 
+### Ajouté
+- **Menu Paramètres (⚙️) et gestion des moyens de paiement** : nouvelle icône engrenage dans le header ouvrant une modale permettant d'ajouter ou supprimer des moyens de paiement. Liste persistée en base (table `settings`, clé `payment_methods`), initialisée au premier appel avec les valeurs par défaut + les valeurs déjà utilisées dans les abonnements.
+- **Dropdown non exclusif des moyens de paiement** dans le formulaire d'abonnement : alimenté par la liste des Paramètres, avec une option « ➕ Autre (saisir)… » permettant la saisie libre. Si la valeur saisie n'existe pas dans la liste, l'utilisateur est invité à l'ajouter automatiquement (confirmation) — l'abonnement est enregistré dans les deux cas.
+- **Filtre par moyen de paiement** dans la barre de recherche (entre le champ de recherche et le filtre catégorie) : filtre la liste et le calendrier via le nouveau paramètre `payment_method` de l'API. Les valeurs utilisées mais absentes de la liste Paramètres restent sélectionnables.
+- 5 nouveaux tests API (settings CRUD, doublons, isolation des abonnements, filtre).
+
 ### Modifié
-- **Bouton Import / Export visible dans le header** : l'icône seule (⬍) est remplacée par un bouton avec fond gris arrondi et libellé « Import / Export », ouvrant la modale « Sauvegarde & Restauration » (export JSON/CSV, import JSON/CSV). Sur mobile (< 640 px), le libellé se masque et seul le symbole ⇅ reste affiché.
+- **Bouton Import / Export visible dans le header** : l'icône seule (⬍) est remplacée par un bouton avec libellé « Import / Export » (masqué sur mobile, symbole ⇅).
+- Badge de version : `v1.3` → `v1.31`.
 
 ## [1.3.0] — 2026-09-06
 

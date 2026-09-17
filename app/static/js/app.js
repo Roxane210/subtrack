@@ -19,11 +19,18 @@ document.addEventListener('alpine:init', () => {
     // Filtres & Recherche
     filterCategory: 'all',
     filterStatus: 'all',
+    filterPaymentMethod: 'all',
     searchQuery: '',
+
+    // Settings - moyens de paiement
+    paymentMethods: [],
+    isSettingsOpen: false,
+    newPaymentMethod: '',
     
     // Modale Formulaire CRUD
     isModalOpen: false,
     modalMode: 'create', // 'create' ou 'edit'
+    paymentSelectMode: 'list', // 'list' = choix dans la liste, 'custom' = saisie libre
     formData: {
       id: null,
       name: '',
@@ -67,6 +74,7 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.applyTheme();
       this.fetchData();
+      this.fetchPaymentMethods();
       this.registerServiceWorker();
 
       // Fermer le menu contextuel lors d'un clic ailleurs ou d'un scroll
@@ -109,7 +117,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const [dashRes, subsRes] = await Promise.all([
           fetch('/api/dashboard'),
-          fetch(`/api/subscriptions?category=${this.filterCategory}&status=${this.filterStatus}&search=${encodeURIComponent(this.searchQuery)}`)
+          fetch(`/api/subscriptions?category=${this.filterCategory}&status=${this.filterStatus}&payment_method=${encodeURIComponent(this.filterPaymentMethod)}&search=${encodeURIComponent(this.searchQuery)}`)
         ]);
 
         if (dashRes.ok && subsRes.ok) {
@@ -134,6 +142,7 @@ document.addEventListener('alpine:init', () => {
     resetFilters() {
       this.filterCategory = 'all';
       this.filterStatus = 'all';
+      this.filterPaymentMethod = 'all';
       this.searchQuery = '';
       this.fetchData();
     },
@@ -156,12 +165,19 @@ document.addEventListener('alpine:init', () => {
         cancellation_url: '',
         notes: ''
       };
+      this.paymentSelectMode = 'list';
       this.isModalOpen = true;
     },
 
     openEditModal(sub) {
       this.modalMode = 'edit';
       this.formData = { ...sub };
+      // Si le moyen de paiement de l'abonnement n'est pas dans la liste, basculer en saisie libre
+      if (this.formData.payment_method && !this.paymentMethods.some(m => m.toLowerCase() === (this.formData.payment_method || '').toLowerCase())) {
+        this.paymentSelectMode = 'custom';
+      } else {
+        this.paymentSelectMode = 'list';
+      }
       this.isModalOpen = true;
     },
 
@@ -169,10 +185,111 @@ document.addEventListener('alpine:init', () => {
       this.isModalOpen = false;
     },
 
+    // ==========================================
+    // SETTINGS - MOYENS DE PAIEMENT
+    // ==========================================
+    async fetchPaymentMethods() {
+      try {
+        const res = await fetch('/api/settings/payment-methods');
+        if (res.ok) {
+          const data = await res.json();
+          this.paymentMethods = data.payment_methods || [];
+        }
+      } catch (err) {
+        console.error('Erreur chargement moyens de paiement:', err);
+      }
+    },
+
+    openSettings() {
+      this.newPaymentMethod = '';
+      this.isSettingsOpen = true;
+      this.$nextTick(() => {
+        if (window.lucide) window.lucide.createIcons();
+      });
+    },
+
+    async addPaymentMethodFromSettings() {
+      const name = this.newPaymentMethod.trim();
+      if (!name) return;
+      try {
+        const res = await fetch('/api/settings/payment-methods', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.paymentMethods = data.payment_methods || [];
+          this.newPaymentMethod = '';
+          this.showToast(`Moyen de paiement « ${name} » ajouté.`, 'success');
+        } else {
+          const errData = await res.json();
+          this.showToast(errData.detail || 'Erreur lors de l\'ajout', 'error');
+        }
+      } catch (err) {
+        this.showToast('Erreur de connexion au serveur', 'error');
+      }
+    },
+
+    async removePaymentMethod(name) {
+      if (!confirm(`Supprimer « ${name} » de la liste des moyens de paiement ? (Les abonnements qui l'utilisent ne seront pas modifiés)`)) return;
+      try {
+        const res = await fetch(`/api/settings/payment-methods/${encodeURIComponent(name)}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.paymentMethods = data.payment_methods || [];
+          this.showToast(`« ${name} » supprimé de la liste.`, 'success');
+        } else {
+          const errData = await res.json();
+          this.showToast(errData.detail || 'Erreur lors de la suppression', 'error');
+        }
+      } catch (err) {
+        this.showToast('Erreur de connexion au serveur', 'error');
+      }
+    },
+
+    // Déclenché quand on choisit « Autre (saisir) » dans le dropdown du formulaire
+    onPaymentSelectChange() {
+      if (this.formData.payment_method === '__custom__') {
+        this.paymentSelectMode = 'custom';
+        this.formData.payment_method = '';
+      }
+    },
+
+    onPaymentSelectModeReset() {
+      this.paymentSelectMode = 'list';
+      this.formData.payment_method = this.paymentMethods[0] || '';
+    },
+
     async saveSubscription() {
       if (!this.formData.name || !this.formData.price || !this.formData.next_billing_date) {
         this.showToast('Veuillez remplir les champs obligatoires.', 'error');
         return;
+      }
+
+      // Vérifier si le moyen de paiement saisi est inconnu → proposer de l'ajouter à la liste
+      const pm = (this.formData.payment_method || '').trim();
+      if (pm && !this.paymentMethods.some(m => m.toLowerCase() === pm.toLowerCase())) {
+        const addTo = confirm(`« ${pm} » n'est pas dans la liste des moyens de paiement.\nL'ajouter à la liste ?`);
+        if (addTo) {
+          try {
+            const res = await fetch('/api/settings/payment-methods', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: pm })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              this.paymentMethods = data.payment_methods || [];
+              this.showToast(`« ${pm} » ajouté à la liste des moyens de paiement.`, 'success');
+            }
+          } catch (err) {
+            // Non bloquant: l'abonnement sera quand même enregistré
+            console.error('Ajout du moyen de paiement impossible:', err);
+          }
+        }
       }
 
       const payload = {
