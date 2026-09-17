@@ -14,13 +14,14 @@ on:
 permissions:
   contents: read
 
-env:
-  SERVICE_NAME: subtrack
-  REGION: europe-west1
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # Variables expressees ici plutot que en top-level env pour eviter tout probleme d'interpolation
+    env:
+      SERVICE_NAME: subtrack
+      REGION: europe-west1
 
     outputs:
       gcp_project_id: ${{ steps.gcloud_project_id.outputs.project_id }}
@@ -30,6 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Auth Google Cloud (compte de service)
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -42,7 +44,8 @@ jobs:
         run: echo "project_id=$(gcloud config get-value project)" >> "$GITHUB_OUTPUT"
 
       - name: Configure Docker pour Artifact/Container Registry
-        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+        run: |
+          gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
 
       - name: Build & push image
         uses: docker/build-push-action@v6
@@ -50,19 +53,19 @@ jobs:
           context: .
           push: true
           tags: |
-            "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:latest"
-            "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}"
+            "${{ env.REGION }}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:latest"
+            "${{ env.REGION }}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}"
 
       - name: Deploy Cloud Run
         run: |
-          gcloud run deploy "${SERVICE_NAME}" \
-            --image "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}" \
-            --region "${REGION}" \
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "${{ env.REGION }}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}" \
+            --region "${{ env.REGION }}" \
             --platform managed \
             --allow-unauthenticated \
             --quiet
 
       - name: Réaffecter le traffic vers la nouvelle révision (100 %)
         run: |
-          gcloud run services update-traffic "${SERVICE_NAME}" \
-            --to-latest --region "${REGION}" --quiet
+          gcloud run services update-traffic "${{ env.SERVICE_NAME }}" \
+            --to-latest --region "${{ env.REGION }}" --quiet
