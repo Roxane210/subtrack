@@ -1,0 +1,60 @@
+name: Deploy SubTrack to Cloud Run
+
+# Déploie automatiquement la nouvelle image sur Cloud Run (europe-west1)
+# à chaque push sur main ou fusion d'une PR.
+# Prérequis (secrets GitHub) :
+#   - GCP_SA_KEY  : clé JSON du compte de service (rôles : Run Admin, Service Account User, Storage Admin sur le projet GCP)
+#   - GCP_PROJECT : ID du projet Google Cloud (celui qui héberge le service Cloud Run "subtrack")
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SERVICE_NAME: subtrack
+  REGION: europe-west1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth Google Cloud (compte de service)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker pour Artifact/Container Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:latest"
+            "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:sha-${{ github.sha }}"
+
+      - name: Deploy Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:sha-${{ github.sha }}" \
+            --region "${REGION}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Réaffecter le traffic vers la nouvelle révision (100 %)
+        run: |
+          gcloud run services update-traffic "${SERVICE_NAME}" \
+            --to-latest --region "${REGION}" --quiet
