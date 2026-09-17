@@ -21,6 +21,11 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # Capture le project ID GCP dans un output GitHub reutilisable
+    outputs:
+      gcp_project_id: ${{ steps.gcloud_project_id.outputs.project_id }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +38,10 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Get GCP Project ID
+        id: gcloud_project_id
+        run: echo "project_id=$(gcloud config get-value project)" >> "$GITHUB_OUTPUT"
+
       - name: Configure Docker pour Artifact/Container Registry
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
@@ -42,13 +51,13 @@ jobs:
           context: .
           push: true
           tags: |
-            "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:latest"
-            "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:sha-${{ github.sha }}"
+            "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:latest"
+            "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}"
 
       - name: Deploy Cloud Run
         run: |
           gcloud run deploy "${SERVICE_NAME}" \
-            --image "${REGION}-docker.pkg.dev/$(gcloud config get-value project)/cloud-run/${SERVICE_NAME}:sha-${{ github.sha }}" \
+            --image "${REGION}-docker.pkg.dev/${{ steps.gcloud_project_id.outputs.project_id }}/cloud-run/${{ env.SERVICE_NAME }}:sha-${{ github.sha }}" \
             --region "${REGION}" \
             --platform managed \
             --allow-unauthenticated \
