@@ -7,6 +7,11 @@ et ce projet suit le [Versionnage Sémantique](https://semver.org/lang/fr/).
 
 ---
 
+## [Non versionné] — 2026-09-17
+
+### Modifié
+- **Bouton Import / Export visible dans le header** : l'icône seule (⬍) est remplacée par un bouton avec fond gris arrondi et libellé « Import / Export », ouvrant la modale « Sauvegarde & Restauration » (export JSON/CSV, import JSON/CSV). Sur mobile (< 640 px), le libellé se masque et seul le symbole ⇅ reste affiché.
+
 ## [1.3.0] — 2026-09-06
 
 ### Ajouté
