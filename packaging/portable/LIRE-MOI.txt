@@ -14,6 +14,11 @@ sont immédiats.
 Si le dossier « vendor/ » est présent dans cette archive, les dépendances sont
 déjà embarquées : aucune connexion Internet n'est nécessaire.
 
+Si ./run.sh n'est pas exécutable après décompression (certains outils
+d'extraction ne conservent pas les droits d'exécution), lancez simplement :
+
+   sh run.sh
+
 Prérequis : Python 3.11 ou supérieur (https://www.python.org/downloads/).
 
 Changer le port :

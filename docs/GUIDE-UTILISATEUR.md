@@ -121,10 +121,14 @@ Boutons **Exporter** et **Importer** directement dans l'en-tête :
 3. Lancez le lanceur :
    - **Linux / macOS** : `./run.sh`
    - **Windows** : double-clic sur `run.bat`
+   - Si `./run.sh` n'est pas exécutable après décompression (certains outils ne
+     conservent pas les droits) : `sh run.sh`
 4. Ouvrez **http://localhost:8090** dans votre navigateur.
 
 Au premier lancement, un environnement virtuel `.venv` est créé et les dépendances sont
-installées automatiquement. Les lancements suivants sont immédiats.
+installées automatiquement (comptez ~30 s). Les lancements suivants sont immédiats.
+Si l'archive contient un dossier `vendor/`, les dépendances sont déjà embarquées :
+le démarrage prend ~2 s et **aucune connexion Internet n'est nécessaire**.
 
 Pour changer le port : `PORT=9000 ./run.sh` (Linux/macOS) ou `set PORT=9000` puis `run.bat` (Windows).
 
