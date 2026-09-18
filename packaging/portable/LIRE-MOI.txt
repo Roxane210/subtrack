@@ -1,0 +1,29 @@
+SubTrack — Version portable
+===========================
+
+1. Lancer l'application
+   Linux / macOS :   ./run.sh
+   Windows       :   double-clic sur run.bat
+
+2. Ouvrir le navigateur sur :  http://localhost:8090
+
+C'est tout. Au premier lancement, un environnement virtuel (.venv) est créé
+automatiquement et les dépendances sont installées ; les lancements suivants
+sont immédiats.
+
+Si le dossier « vendor/ » est présent dans cette archive, les dépendances sont
+déjà embarquées : aucune connexion Internet n'est nécessaire.
+
+Prérequis : Python 3.11 ou supérieur (https://www.python.org/downloads/).
+
+Changer le port :
+   Linux / macOS :   PORT=9000 ./run.sh
+   Windows       :   set PORT=9000  puis  run.bat
+
+Vos données
+-----------
+La base de données est créée dans le dossier « data/ » à côté de ce fichier
+(data/subscriptions.db). Sauvegardez ce fichier, ou utilisez le bouton
+« Exporter » de l'application, pour ne rien perdre.
+
+Documentation complète : docs/GUIDE-UTILISATEUR.md
