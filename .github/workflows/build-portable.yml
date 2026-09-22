@@ -1,0 +1,74 @@
+name: Build Portable Windows
+
+# Construit une version portable Windows de SubTrack (PyInstaller) :
+# un dossier SubTrack/ contenant SubTrack.exe + les données, zippé et
+# publié en artefact téléchargeable (et en release si déclenché par un tag v*).
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Installer les dépendances + PyInstaller
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build PyInstaller (onedir)
+        shell: bash
+        run: >
+          pyinstaller --name SubTrack --onedir --clean --noconfirm
+          --add-data "app/templates;app/templates"
+          --add-data "app/static;app/static"
+          --collect-submodules uvicorn
+          --collect-submodules anyio
+          --hidden-import anyio._backends._asyncio
+          launcher.py
+
+      - name: Vérifier que l'exécutable existe
+        shell: pwsh
+        run: |
+          if (-Not (Test-Path "dist/SubTrack/SubTrack.exe")) {
+            Write-Error "SubTrack.exe introuvable après le build"
+            exit 1
+          }
+
+      - name: Préparer le dossier portable (LISEZMOI + version)
+        shell: pwsh
+        run: |
+          Copy-Item LISEZMOI-PORTABLE.txt dist/SubTrack/LISEZMOI.txt
+          Compress-Archive -Path dist/SubTrack -DestinationPath SubTrack-windows-portable.zip -Force
+          Get-Item SubTrack-windows-portable.zip | Select-Object Name, Length
+
+      - name: Upload artefact (dispo dans l'onglet Actions du run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SubTrack-windows-portable
+          path: SubTrack-windows-portable.zip
+          retention-days: 90
+
+      - name: Publier en release (si tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SubTrack-windows-portable.zip
+          generate_release_notes: true

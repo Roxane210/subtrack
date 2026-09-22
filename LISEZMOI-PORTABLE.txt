@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════
+  SubTrack — Gestionnaire d'abonnements
+  Version portable Windows
+═══════════════════════════════════════════════
+
+DÉMARRAGE
+---------
+1. Dézippez ce dossier où vous voulez (Bureau, Documents, clé USB…).
+2. Double-cliquez sur  SubTrack.exe
+3. Une fenêtre noire (le moteur) s'ouvre, puis votre navigateur
+   s'ouvre automatiquement sur l'application.
+4. Utilisez SubTrack normalement : tout est sauvegardé automatiquement.
+
+ARRÊT
+-----
+Fermez la fenêtre noire (ou appuyez sur Ctrl+C dedans).
+Fermer l'onglet du navigateur ne suffit pas : le serveur resterait actif.
+
+VOS DONNÉES
+-----------
+Toutes vos données sont dans le dossier  data\  à côté de SubTrack.exe
+(fichier subscriptions.db). Rien n'est envoyé sur Internet : tout reste
+sur votre ordinateur.
+
+SAUVEGARDE / TRANSFERT
+----------------------
+- Sauvegarde : dans l'application, bouton « Import / Export » → Format JSON.
+- Déplacer l'application : copiez tout le dossier (SubTrack.exe + data\).
+  Le nouveau dossier retrouve toutes vos données.
+
+CONFLIT DE PORT (rare)
+----------------------
+Si l'application ne s'ouvre pas et que la fenêtre noire affiche une erreur,
+un autre programme utilise peut-être le port. Relancez : SubTrack essaie
+automatiquement les ports suivants (8085, 8086, 8087…).
+
+DÉSINSTALLATION
+---------------
+Supprimez simplement le dossier. Rien d'autre n'est installé sur votre PC.
